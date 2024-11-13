@@ -8,11 +8,18 @@ pub fn main() !void {
     var board: ui.Board = undefined;
     @memset(&board, [_]u8{ ' ', '.' } ** (ui.cols / 2));
 
+    // init
     try ui.init(bout.writer());
+    defer {
+        ui.deinit(bout.writer()) catch {};
+        bout.flush() catch {};
+    }
     try ui.drawBoard(bout.writer(), board);
-    try bout.flush();
-    std.time.sleep(std.time.ns_per_s * 5);
 
-    try ui.deinit(bout.writer());
-    try bout.flush();
+    // main loop
+    while (true) {
+        // move current piece
+        try bout.flush();
+        std.Thread.sleep(std.time.ns_per_s * 1);
+    }
 }

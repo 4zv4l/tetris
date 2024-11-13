@@ -1,8 +1,8 @@
 const std = @import("std");
 
 pub const cols = 20;
-pub const lines = 25;
-pub const Board = [lines][cols]u8;
+pub const rows = 24;
+pub const Board = [rows][cols]u8;
 
 pub const left_border = "<!";
 pub const right_border = "!>";
@@ -27,8 +27,8 @@ pub fn deinit(writer: anytype) !void {
 pub fn drawBoard(writer: anytype, board: Board) !void {
     try writer.print("{s}", .{escape.CLEAR_TOP_LEFT});
     for (board) |line| {
-        try writer.print("{s}", .{left_border});
-        try writer.print("{s}", .{line});
-        try writer.print("{s}\n", .{right_border});
+        try writer.print("{s}{s}{s}\n", .{ left_border, line, right_border });
     }
+    try writer.print("{s}{s}{s}\n", .{ left_border, [_]u8{'='} ** cols, right_border });
+    try writer.print("  {s}\n", .{[_]u8{ '\\', '/' } ** (cols / 2)});
 }
