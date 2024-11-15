@@ -111,9 +111,9 @@ pub const Shape = struct {
 pub fn checkPos(board: Board, shape: Shape) bool {
     for (shape.array, shape.pos.y..shape.pos.y + 3) |shape_line, board_y| {
         for (shape_line, 0..) |shape_case, x_idx| {
-            if (shape.pos.x +% x_idx >= cols or board_y >= rows) {
+            if (shape.pos.x +% @as(u8, @intCast(x_idx)) >= cols or board_y >= rows) {
                 if (shape_case == 1) return false;
-            } else if (shape_case == 1 and board[board_y][shape.pos.x +% x_idx] == 1) return false;
+            } else if (shape_case == 1 and board[board_y][shape.pos.x +% @as(u8, @intCast(x_idx))] == 1) return false;
         }
     }
     return true;
@@ -122,7 +122,7 @@ pub fn checkPos(board: Board, shape: Shape) bool {
 pub fn deleteShapeFromBoard(shape: Shape, board: *Board) void {
     for (shape.array, shape.pos.y..shape.pos.y + 3) |shape_line, board_y| {
         for (shape_line, 0..) |shape_case, x_idx| {
-            if (shape_case == 1) board[board_y][shape.pos.x +% x_idx] = 0;
+            if (shape_case == 1) board[board_y][shape.pos.x +% @as(u8, @intCast(x_idx))] = 0;
         }
     }
 }
@@ -131,7 +131,7 @@ pub fn deleteShapeFromBoard(shape: Shape, board: *Board) void {
 pub fn updateBoard(board: *Board, shape: Shape) void {
     for (shape.array, shape.pos.y..shape.pos.y + 3) |shape_line, board_y| {
         for (shape_line, 0..) |shape_case, x_idx| {
-            if (shape_case == 1) board[board_y][shape.pos.x +% x_idx] = 1;
+            if (shape_case == 1) board[board_y][shape.pos.x +% @as(u8, @intCast(x_idx))] = 1;
         }
     }
 }
