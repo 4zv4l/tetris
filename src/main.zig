@@ -70,7 +70,7 @@ pub const Shape = struct {
         return Shapes[rng.random().uintLessThan(usize, Shapes.len)];
     }
 
-    pub fn move(self: *Shape, direction: Direction, board: *Board, gameOn: *bool) void {
+    pub fn move(self: *Shape, direction: Direction, board: *Board, gameOn: *bool) !void {
         deleteShapeFromBoard(self.*, board);
         var tmp: Shape = self.*;
         switch (direction) {
@@ -111,8 +111,8 @@ pub const Shape = struct {
 pub fn checkPos(board: Board, shape: Shape) bool {
     for (shape.array, shape.pos.y..shape.pos.y + 3) |shape_line, board_y| {
         for (shape_line, 0..) |shape_case, x_idx| {
-            if (shape.pos.x +% @as(u8, @intCast(x_idx)) >= cols or board_y >= rows) {
-                if (shape_case == 1) return false;
+            if ((shape.pos.x +% @as(u8, @intCast(x_idx)) >= cols or board_y >= rows) and shape_case == 1) {
+                return false;
             } else if (shape_case == 1 and board[board_y][shape.pos.x +% @as(u8, @intCast(x_idx))] == 1) return false;
         }
     }
@@ -151,13 +151,13 @@ pub fn main() !void {
     // main loop
     while (gameOn) {
         // check user input
-        if (io.getch()) |direction| current.move(direction, &board, &gameOn);
+        if (io.getch()) |direction| try current.move(direction, &board, &gameOn);
 
         // check time to move shape down
         const now = std.time.nanoTimestamp();
         if ((now - before) > (std.time.ns_per_s * 0.5)) {
             before = now;
-            current.move(.Down, &board, &gameOn);
+            try current.move(.Down, &board, &gameOn);
         }
     }
 }
