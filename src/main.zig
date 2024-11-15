@@ -1,25 +1,160 @@
+// TODO: check checkPos(), deleteShapeFromBoard(), updateBoard()
+// and shape handling (square goes up when moving)
+
 const std = @import("std");
-const ui = @import("ui.zig");
+const io = @import("io.zig");
+const rand = std.Random.DefaultPrng;
+
+pub const cols = 10;
+pub const rows = 20;
+pub const Board = [rows][cols]u8;
+pub const Direction = enum { Up, Down, Left, Right };
+
+const Shape = struct {
+    const shape_len = 3;
+
+    array: [shape_len][shape_len]u8 = undefined,
+    pos: struct { x: u8, y: u8 } = .{ .x = cols / 2, .y = 0 }, // top center
+
+    const Shapes = &[_]Shape{
+        .{ .array = .{
+            .{ 0, 1, 1 },
+            .{ 1, 1, 0 },
+            .{ 0, 0, 0 },
+        } }, // S
+        .{ .array = .{
+            .{ 1, 1, 0 },
+            .{ 0, 1, 1 },
+            .{ 0, 0, 0 },
+        } }, // Z
+        .{ .array = .{
+            .{ 0, 1, 0 },
+            .{ 1, 1, 1 },
+            .{ 0, 0, 0 },
+        } }, // T
+        .{ .array = .{
+            .{ 0, 0, 1 },
+            .{ 1, 1, 1 },
+            .{ 0, 0, 0 },
+        } }, // L
+        .{ .array = .{
+            .{ 1, 0, 0 },
+            .{ 1, 1, 1 },
+            .{ 0, 0, 0 },
+        } }, // rL
+        .{ .array = .{
+            .{ 1, 1, 0 },
+            .{ 1, 1, 0 },
+            .{ 0, 0, 0 },
+        } }, // SQ
+        .{ .array = .{
+            .{ 0, 1, 0 },
+            .{ 0, 1, 0 },
+            .{ 0, 1, 0 },
+        } }, // |
+    };
+
+    pub fn rotate90(self: *Shape) void {
+        var result = Shape{};
+        inline for (self.array, 0..) |line, line_idx| {
+            inline for (line, 0..) |case, case_idx| {
+                result.array[case_idx][result.array.len - line_idx - 1] = case;
+            }
+        }
+        self.*.array = result.array;
+    }
+
+    pub fn newRandom() Shape {
+        var rng = rand.init(@intCast(std.time.nanoTimestamp()));
+        return Shapes[rng.random().uintLessThan(usize, Shapes.len)];
+    }
+
+    pub fn move(self: *Shape, direction: Direction, board: *Board, gameOn: *bool) void {
+        deleteShapeFromBoard(self.*, board);
+        var tmp: Shape = self.*;
+        switch (direction) {
+            .Up => {
+                tmp.rotate90();
+                if (checkPos(board.*, tmp)) self.rotate90();
+            },
+            .Down => {
+                tmp.pos.y += 1;
+                if (checkPos(board.*, tmp)) {
+                    self.pos.y += 1;
+                } else {
+                    //checkLines(board);
+                    self.* = Shape.newRandom();
+                    if (!checkPos(board.*, self.*)) gameOn.* = false;
+                }
+            },
+            .Left => {
+                tmp.pos.x -%= 1;
+                if (checkPos(board.*, tmp)) {
+                    self.pos.x -= 1;
+                }
+            },
+            .Right => {
+                tmp.pos.x += 1;
+                if (checkPos(board.*, tmp)) {
+                    self.pos.x += 1;
+                }
+            },
+        }
+        updateBoard(board, self.*);
+        try io.drawBoard(board.*);
+    }
+};
+
+// check if piece overlap board active case
+pub fn checkPos(board: Board, shape: Shape) bool {
+    for (shape.array, shape.pos.y..shape.pos.y + 3) |shape_line, board_y| {
+        for (shape_line, shape.pos.x..shape.pos.x + 3) |shape_case, board_x| {
+            if (shape_case == 1 and board[board_y][board_x] == 1) return false;
+        }
+    }
+    return true;
+}
+
+pub fn deleteShapeFromBoard(shape: Shape, board: *Board) void {
+    for (shape.array, shape.pos.y..shape.pos.y + 3) |shape_line, board_y| {
+        for (shape_line, shape.pos.x..shape.pos.x + 3) |shape_case, board_x| {
+            if (shape_case == 1) board[board_y][board_x] = 0;
+        }
+    }
+}
+
+// update shape on board
+pub fn updateBoard(board: *Board, shape: Shape) void {
+    for (shape.array, shape.pos.y..shape.pos.y + 3) |shape_line, board_y| {
+        for (shape_line, shape.pos.x..shape.pos.x + 3) |shape_case, board_x| {
+            if (shape_case == 1) board[board_y][board_x] = 1;
+        }
+    }
+}
 
 pub fn main() !void {
-    const stdout = std.io.getStdOut().writer();
-    var bout = std.io.bufferedWriter(stdout);
+    var board: Board = std.mem.zeroes(Board);
 
-    var board: ui.Board = undefined;
-    @memset(&board, [_]u8{ ' ', '.' } ** (ui.cols / 2));
+    // init IO
+    try io.init();
+    defer io.deinit() catch {};
 
-    // init
-    try ui.init(bout.writer());
-    defer {
-        ui.deinit(bout.writer()) catch {};
-        bout.flush() catch {};
-    }
-    try ui.drawBoard(bout.writer(), board);
+    // setup vars
+    var gameOn = true;
+    var current = Shape.newRandom();
+    var before = std.time.nanoTimestamp();
+    try io.drawBoard(board);
 
     // main loop
-    while (true) {
-        // move current piece
-        try bout.flush();
-        std.Thread.sleep(std.time.ns_per_s * 1);
+    while (gameOn) {
+        // check user input
+        if (io.getch()) |direction| current.move(direction, &board, &gameOn);
+
+        // check time to move shape down
+        const now = std.time.nanoTimestamp();
+        if ((now - before) > (std.time.ns_per_s * 0.5)) {
+            before = now;
+            current.move(.Down, &board, &gameOn);
+        }
     }
 }
