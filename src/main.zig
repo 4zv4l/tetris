@@ -111,9 +111,9 @@ pub const Shape = struct {
 pub fn checkPos(board: Board, shape: Shape) bool {
     for (shape.array, shape.pos.y..shape.pos.y + 3) |shape_line, board_y| {
         for (shape_line, 0..) |shape_case, x_idx| {
-            if (shape.pos.x + x_idx >= cols or board_y >= rows) {
+            if (shape.pos.x +% x_idx >= cols or board_y >= rows) {
                 if (shape_case == 1) return false;
-            } else if (shape_case == 1 and board[board_y][shape.pos.x + x_idx] == 1) return false;
+            } else if (shape_case == 1 and board[board_y][shape.pos.x +% x_idx] == 1) return false;
         }
     }
     return true;
@@ -121,8 +121,8 @@ pub fn checkPos(board: Board, shape: Shape) bool {
 
 pub fn deleteShapeFromBoard(shape: Shape, board: *Board) void {
     for (shape.array, shape.pos.y..shape.pos.y + 3) |shape_line, board_y| {
-        for (shape_line, shape.pos.x..shape.pos.x + 3) |shape_case, board_x| {
-            if (shape_case == 1) board[board_y][board_x] = 0;
+        for (shape_line, 0..) |shape_case, x_idx| {
+            if (shape_case == 1) board[board_y][shape.pos.x +% x_idx] = 0;
         }
     }
 }
@@ -130,20 +130,19 @@ pub fn deleteShapeFromBoard(shape: Shape, board: *Board) void {
 // update shape on board
 pub fn updateBoard(board: *Board, shape: Shape) void {
     for (shape.array, shape.pos.y..shape.pos.y + 3) |shape_line, board_y| {
-        for (shape_line, shape.pos.x..shape.pos.x + 3) |shape_case, board_x| {
-            if (shape_case == 1) board[board_y][board_x] = 1;
+        for (shape_line, 0..) |shape_case, x_idx| {
+            if (shape_case == 1) board[board_y][shape.pos.x +% x_idx] = 1;
         }
     }
 }
 
 pub fn main() !void {
-    var board: Board = std.mem.zeroes(Board);
-
     // init IO
     try io.init();
     defer io.deinit() catch {};
 
     // setup vars
+    var board: Board = std.mem.zeroes(Board);
     var gameOn = true;
     var current = Shape.newRandom();
     var before = std.time.nanoTimestamp();
