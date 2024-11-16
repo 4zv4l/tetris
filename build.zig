@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -11,6 +12,23 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    exe.linkSystemLibrary("curses");
+
+    switch (target.result.os.tag) {
+        .windows => {
+            exe.root_module.addImport("io", b.createModule(.{
+                .optimize = optimize,
+                .target = target,
+                .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/io_windows.zig" } },
+            }));
+        },
+        else => {
+            exe.root_module.addImport("io", b.createModule(.{
+                .optimize = optimize,
+                .target = target,
+                .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/io_unix.zig" } },
+            }));
+            exe.linkSystemLibrary("curses");
+        },
+    }
     b.installArtifact(exe);
 }
