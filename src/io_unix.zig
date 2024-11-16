@@ -17,6 +17,7 @@ pub fn init() !void {
     _ = ncurses.cbreak();
     _ = ncurses.noecho();
     _ = ncurses.nodelay(ncurses.stdscr, true);
+    _ = ncurses.keypad(ncurses.stdscr, true);
 }
 
 pub fn deinit() !void {
@@ -51,10 +52,10 @@ pub fn drawBoard(board: Board, _: Shape) !void {
 
 pub fn getch() ?Direction {
     return switch (ncurses.getch()) {
-        'w' => .Up,
-        's' => .Down,
-        'a' => .Left,
-        'd' => .Right,
+        'w', ncurses.KEY_UP => .Up,
+        's', ncurses.KEY_DOWN => .Down,
+        'a', ncurses.KEY_LEFT => .Left,
+        'd', ncurses.KEY_RIGHT => .Right,
         else => null,
     };
 }

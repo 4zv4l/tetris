@@ -60,6 +60,13 @@ pub fn getch() ?Direction {
             's' => .Down,
             'a' => .Left,
             'd' => .Right,
+            0, 224 => switch (conio._getch()) {
+                72 => .Up,
+                80 => .Down,
+                75 => .Left,
+                77 => .Right,
+                else => null,
+            },
             else => null,
         };
     }
