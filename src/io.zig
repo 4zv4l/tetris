@@ -20,15 +20,16 @@ pub fn init() !void {
 }
 
 pub fn deinit() !void {
+    _ = ncurses.clear();
+    _ = ncurses.refresh();
     _ = ncurses.endwin();
 }
 
 pub fn drawBoard(board: Board, _: Shape) !void {
-    // clear screen
     const stdout = std.io.getStdOut().writer();
     var bout = std.io.bufferedWriter(stdout);
-    defer bout.flush() catch {};
 
+    // clear screen
     try bout.writer().print("{s}", .{"\x1b[2J\x1b[H"});
 
     // print board
@@ -37,12 +38,14 @@ pub fn drawBoard(board: Board, _: Shape) !void {
         for (line) |case| try bout.writer().print("{s}", .{if (case == 0) empty else square});
         try bout.writer().print("{s}\r\n", .{right_border});
     }
+
     // bottom of board
     try bout.writer().print("{s}", .{left_border});
     for (0..cols) |_| try bout.writer().print("==", .{});
     try bout.writer().print("{s}\r\n", .{right_border});
     for (0..cols + 2) |_| try bout.writer().print("/\\", .{});
 
+    try bout.flush();
     _ = ncurses.refresh();
 }
 

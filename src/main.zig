@@ -1,5 +1,3 @@
-// TODO: checkLines
-
 const std = @import("std");
 const io = @import("io.zig");
 const rand = std.Random.DefaultPrng;
@@ -83,8 +81,8 @@ pub const Shape = struct {
                 if (checkPos(board.*, tmp)) {
                     self.pos.y += 1;
                 } else {
-                    //checkLines(board);
                     updateBoard(board, self.*);
+                    checkLines(board);
                     self.* = Shape.newRandom();
                     if (!checkPos(board.*, self.*)) gameOn.* = false;
                 }
@@ -106,6 +104,20 @@ pub const Shape = struct {
         try io.drawBoard(board.*, tmp);
     }
 };
+
+pub fn checkLines(board: *Board) void {
+    var line_idx: usize = 0;
+    while (line_idx < board.len) : (line_idx += 1) {
+        if (std.mem.eql(u8, &board[line_idx], &[_]u8{1} ** cols)) {
+            var current_line: usize = line_idx;
+            while (current_line > 0) : (current_line -= 1) {
+                board[current_line] = board[current_line - 1];
+            }
+            @memset(&board[0], 0);
+            line_idx = 0;
+        }
+    }
+}
 
 // check if piece overlap board active case
 pub fn checkPos(board: Board, shape: Shape) bool {
