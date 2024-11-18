@@ -2,6 +2,10 @@
     .name = "tetris",
     .version = "0.0.0",
     .dependencies = .{
+        .@"zig-spoon" = .{
+            .url = "git+https://git.sr.ht/~leon_plickat/zig-spoon#3e6c5ab4617e1869c2781e698e14cd976135e998",
+            .hash = "122017137ec95f2f1e125b3f1162e06b8df226e9b8e2fa0d94dd463d531642c5b1e2",
+        },
     },
     .paths = .{
         "build.zig",

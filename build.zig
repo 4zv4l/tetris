@@ -22,12 +22,14 @@ pub fn build(b: *std.Build) void {
             }));
         },
         else => {
-            exe.root_module.addImport("io", b.createModule(.{
+            const spoon = b.dependency("zig-spoon", .{ .optimize = optimize, .target = target });
+            const io = b.createModule(.{
                 .optimize = optimize,
                 .target = target,
                 .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/io_unix.zig" } },
-            }));
-            exe.linkSystemLibrary("curses");
+            });
+            io.addImport("spoon", spoon.module("spoon"));
+            exe.root_module.addImport("io", io);
         },
     }
     b.installArtifact(exe);
