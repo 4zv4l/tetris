@@ -27,7 +27,6 @@ pub fn init() !void {
     var bout = std.io.bufferedWriter(stdout);
     try bout.writer().print("{s}", .{escape.ENTER_ALTER});
     try bout.flush();
-
     try term.init(.{});
     try term.uncook(.{});
 }

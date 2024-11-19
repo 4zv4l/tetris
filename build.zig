@@ -21,6 +21,14 @@ pub fn build(b: *std.Build) void {
                 .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/io_windows.zig" } },
             }));
         },
+        .macos => {
+            exe.root_module.addImport("io", b.createModule(.{
+                .optimize = optimize,
+                .target = target,
+                .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/io_macos.zig" } },
+            }));
+            exe.linkSystemLibrary("curses");
+        },
         else => {
             const spoon = b.dependency("zig-spoon", .{ .optimize = optimize, .target = target });
             const io = b.createModule(.{
