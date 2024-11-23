@@ -94,7 +94,7 @@ pub const Shape = struct {
                 }
             },
             .Right => {
-                tmp.pos.x += 1;
+                tmp.pos.x +|= 1;
                 if (checkPos(board.*, tmp)) {
                     self.pos.x += 1;
                 }
