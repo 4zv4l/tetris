@@ -26,3 +26,7 @@ Keys:
 - `Down`, `s`: move shape down
 - `Left`, `a`: move shape left
 - `Right`, `d`: move shape right
+
+## Zig version
+
+This project uses Zig `0.13.0`
