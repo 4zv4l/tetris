@@ -1,6 +1,8 @@
 const std = @import("std");
-const io = @import("io");
 const rand = std.Random.DefaultPrng;
+const io = @import("io");
+const UDPServer = @import("network.zig");
+pub const Clients = UDPServer.Clients;
 
 pub const cols = 10;
 pub const rows = 20;
@@ -101,7 +103,6 @@ pub const Shape = struct {
             },
         }
         updateBoard(board, self.*);
-        try io.drawBoard(board.*, tmp);
     }
 };
 
@@ -148,7 +149,41 @@ pub fn updateBoard(board: *Board, shape: Shape) void {
     }
 }
 
+fn parseIp(host: []const u8) !std.net.Address {
+    var host_it = std.mem.splitScalar(u8, host, ':');
+    const ip = host_it.next() orelse @panic("wrong address given in arguments");
+    const strport = host_it.next() orelse @panic("wrong address given in arguments");
+    const port = try std.fmt.parseUnsigned(u16, strport, 10);
+    return try std.net.Address.parseIp(ip, port);
+}
+
 pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const allocator = gpa.allocator();
+
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+
+    const clients = blk: {
+        var clients = std.ArrayList(Clients).init(allocator);
+        errdefer clients.deinit();
+        if (args.len < 2) break :blk clients.toOwnedSlice() catch @panic("Oops slice");
+        for (args[2..]) |straddr| {
+            try clients.append(.{ .board = std.mem.zeroes(Board), .address = try parseIp(straddr) });
+        }
+        break :blk clients.toOwnedSlice() catch @panic("Oops slice");
+    };
+    defer allocator.free(clients);
+
+    const addr = if (args.len > 1) try parseIp(args[1]) else std.net.Address.parseIp("0.0.0.0", 6666) catch unreachable;
+    var udp_server = try UDPServer.init(addr);
+    defer udp_server.deinit();
+
+    var client_mutex = std.Thread.Mutex{};
+    var t = try std.Thread.spawn(.{}, UDPServer.getBoardFromClients, .{ udp_server, clients, &client_mutex });
+    t.detach();
+
     // init IO
     try io.init();
     defer io.deinit() catch {};
@@ -158,18 +193,28 @@ pub fn main() !void {
     var gameOn = true;
     var current = Shape.newRandom();
     var before = std.time.nanoTimestamp();
-    try io.drawBoard(board, current);
+    try io.drawBoard(board, clients);
 
     // main loop
     while (gameOn) {
         // check user input
-        if (io.getch()) |direction| try current.move(direction, &board, &gameOn);
+        if (io.getch()) |direction| {
+            try current.move(direction, &board, &gameOn);
+            try udp_server.sendBoardToClients(clients, board);
+            client_mutex.lock();
+            try io.drawBoard(board, clients);
+            client_mutex.unlock();
+        }
 
         // check time to move shape down
         const now = std.time.nanoTimestamp();
         if ((now - before) > (std.time.ns_per_s * 0.5)) {
             before = now;
+            try udp_server.sendBoardToClients(clients, board);
             try current.move(.Down, &board, &gameOn);
+            client_mutex.lock();
+            try io.drawBoard(board, clients);
+            client_mutex.unlock();
         }
     }
 }

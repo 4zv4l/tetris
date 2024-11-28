@@ -31,8 +31,8 @@ pub fn build(b: *std.Build) void {
                     .owner = b,
                     .sub_path = "./lib/raylib-5.5_win64_mingw-w64/lib/",
                 } });
+                exe.linkSystemLibrary("raylib");
             }
-            exe.linkSystemLibrary("raylib");
             exe.root_module.addImport("io", io);
         },
         .macos => {
