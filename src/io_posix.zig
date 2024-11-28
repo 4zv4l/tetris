@@ -8,7 +8,7 @@ const Direction = root.Direction;
 const Shape = root.Shape;
 const cols = root.cols;
 const rows = root.rows;
-const Clients = root.Clients;
+const Client = root.Client;
 
 pub const left_border = "<!";
 pub const right_border = "!>";
@@ -51,7 +51,7 @@ pub fn deinit() !void {
     try term.deinit();
 }
 
-pub fn drawBoard(board: Board, clients: []Clients) !void {
+pub fn drawBoard(board: Board, clients: []Client) !void {
     const stdout = std.io.getStdOut().writer();
     var bout = std.io.bufferedWriter(stdout);
 
@@ -59,16 +59,16 @@ pub fn drawBoard(board: Board, clients: []Clients) !void {
     try bout.writer().print("{s}", .{"\x1b[2J\x1b[H"});
 
     var idx: usize = 0;
-    try rawDrawBoard(bout.writer(), board, idx);
+    try rawDrawBoard(bout.writer(), board, idx, null);
     for (clients) |client| {
         idx += ((cols * 2) + 8);
-        try rawDrawBoard(bout.writer(), client.board, idx);
+        try rawDrawBoard(bout.writer(), client.board, idx, client);
     }
 
     try bout.flush();
 }
 
-fn rawDrawBoard(writer: anytype, board: Board, x: usize) !void {
+fn rawDrawBoard(writer: anytype, board: Board, x: usize, client: ?Client) !void {
     var buf: [10]u8 = undefined;
     const move_tox = try std.fmt.bufPrint(&buf, "\x1b[{d}C", .{x});
 
@@ -87,6 +87,11 @@ fn rawDrawBoard(writer: anytype, board: Board, x: usize) !void {
     try writer.print("{s}\r\n", .{right_border});
     try writer.print("{s}", .{move_tox});
     for (0..cols + 2) |_| try writer.print("/\\", .{});
+    if (client) |c| {
+        try writer.print("\r\n\n{s}host: {}\r\n{s}score: {d}", .{ move_tox, c.address, move_tox, c.score });
+    } else {
+        try writer.print("\r\n\n{s}host: {s}\r\n{s}score: {d}", .{ move_tox, "yourself", move_tox, root.lines_done });
+    }
 }
 
 pub fn getch() ?Direction {

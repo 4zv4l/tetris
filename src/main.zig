@@ -2,7 +2,7 @@ const std = @import("std");
 const rand = std.Random.DefaultPrng;
 const io = @import("io");
 const UDPServer = @import("network.zig");
-pub const Clients = UDPServer.Clients;
+pub const Client = UDPServer.Client;
 
 pub const cols = 10;
 pub const rows = 20;
@@ -170,13 +170,13 @@ pub fn main() !void {
 
     // setup server and thread if required
     var udp_server: ?UDPServer = null;
-    var clients: ?[]Clients = null;
+    var clients: ?[]Client = null;
     var client_mutex = std.Thread.Mutex{};
     switch (args.len) {
         0, 1, 2 => {},
         else => {
             udp_server = try UDPServer.init(try parseIp(args[1]));
-            clients = try allocator.alloc(Clients, args.len - 2);
+            clients = try allocator.alloc(Client, args.len - 2);
             errdefer allocator.free(clients.?);
             for (args[2..], clients.?) |strhost, *client| client.* = .{ .address = try parseIp(strhost) };
             var t = try std.Thread.spawn(.{}, UDPServer.getBoardFromClients, .{ udp_server.?, clients.?, &client_mutex });
@@ -205,7 +205,7 @@ pub fn main() !void {
         // check user input
         if (io.getch()) |direction| {
             try current.move(direction, &board, &gameOn);
-            if (udp_server) |server| try server.sendBoardToClients(clients.?, board);
+            if (udp_server) |server| try server.sendBoardToClients(clients.?, board, lines_done);
             client_mutex.lock();
             try io.drawBoard(board, clients orelse &.{});
             client_mutex.unlock();
@@ -222,7 +222,7 @@ pub fn main() !void {
                 else => 0.1,
             };
             before = now;
-            if (udp_server) |server| try server.sendBoardToClients(clients.?, board);
+            if (udp_server) |server| try server.sendBoardToClients(clients.?, board, lines_done);
             try current.move(.Down, &board, &gameOn);
             client_mutex.lock();
             try io.drawBoard(board, clients orelse &.{});

@@ -7,7 +7,8 @@ const UDPServer = @This();
 const Board = @import("root").Board;
 const cols = @import("root").cols;
 const rows = @import("root").rows;
-pub const Clients = struct { board: Board = std.mem.zeroes(Board), address: std.net.Address };
+pub const Client = struct { score: usize = 0, board: Board = std.mem.zeroes(Board), address: std.net.Address };
+const Data = extern struct { score: usize, board: Board };
 
 handle: posix.socket_t,
 
@@ -22,23 +23,26 @@ pub fn deinit(self: UDPServer) void {
     posix.close(self.handle);
 }
 
-pub fn sendBoardToClients(self: UDPServer, clients: []Clients, board: Board) !void {
+pub fn sendBoardToClients(self: UDPServer, clients: []Client, board: Board, score: usize) !void {
+    const data: [@sizeOf(Data)]u8 = @bitCast(Data{ .score = score, .board = board });
     for (clients) |client| {
         const client_addr_len: posix.socklen_t = @sizeOf(posix.sockaddr);
-        _ = try posix.sendto(self.handle, &@as([rows * cols]u8, @bitCast(board)), 0, &client.address.any, client_addr_len);
+        _ = try posix.sendto(self.handle, @ptrCast(&data), 0, &client.address.any, client_addr_len);
     }
 }
 
-pub fn getBoardFromClients(self: UDPServer, clients: []Clients, mutex: *std.Thread.Mutex) !void {
-    var board: [rows * cols]u8 = undefined;
+pub fn getBoardFromClients(self: UDPServer, clients: []Client, mutex: *std.Thread.Mutex) !void {
+    var raw: [@sizeOf(Data)]u8 = undefined;
     while (true) {
         var client_addr: net.Address = undefined;
         var client_addr_len: posix.socklen_t = @sizeOf(posix.sockaddr);
-        _ = try posix.recvfrom(self.handle, &board, 0, &client_addr.any, &client_addr_len);
+        _ = try posix.recvfrom(self.handle, &raw, 0, &client_addr.any, &client_addr_len);
         for (clients) |*client| {
             if (net.Address.eql(client.address, client_addr)) {
                 mutex.lock();
-                client.board = @bitCast(board);
+                const data: Data = @bitCast(raw);
+                client.board = data.board;
+                client.score = data.score;
                 mutex.unlock();
             }
         }
