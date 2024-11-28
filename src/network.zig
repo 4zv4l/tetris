@@ -7,7 +7,7 @@ const UDPServer = @This();
 const Board = @import("root").Board;
 const cols = @import("root").cols;
 const rows = @import("root").rows;
-pub const Clients = struct { board: Board, address: std.net.Address };
+pub const Clients = struct { board: Board = std.mem.zeroes(Board), address: std.net.Address };
 
 handle: posix.socket_t,
 

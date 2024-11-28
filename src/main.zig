@@ -176,7 +176,7 @@ pub fn main() !void {
             udp_server = try UDPServer.init(try parseIp(args[1]));
             clients = try allocator.alloc(Clients, args.len - 2);
             errdefer allocator.free(clients.?);
-            for (args[2..], clients.?) |strhost, *client| client.* = .{ .address = try parseIp(strhost), .board = std.mem.zeroes(Board) };
+            for (args[2..], clients.?) |strhost, *client| client.* = .{ .address = try parseIp(strhost) };
             var t = try std.Thread.spawn(.{}, UDPServer.getBoardFromClients, .{ udp_server.?, clients.?, &client_mutex });
             t.detach();
         },
@@ -195,6 +195,8 @@ pub fn main() !void {
     var gameOn = true;
     var current = Shape.newRandom();
     var before = std.time.nanoTimestamp();
+    var speed_time = std.time.timestamp();
+    var speed: f64 = 0.5;
     try io.drawBoard(board, clients orelse &.{});
 
     // main loop
@@ -210,7 +212,11 @@ pub fn main() !void {
 
         // check time to move shape down
         const now = std.time.nanoTimestamp();
-        if ((now - before) > (std.time.ns_per_s * 0.5)) {
+        if ((now - before) > @as(i128, @intFromFloat(std.time.ns_per_s * speed))) {
+            if (speed > 0.130 and (std.time.timestamp() - speed_time) > 10) {
+                speed -= 0.025;
+                speed_time = std.time.timestamp();
+            }
             before = now;
             if (udp_server) |server| try server.sendBoardToClients(clients.?, board);
             try current.move(.Down, &board, &gameOn);
