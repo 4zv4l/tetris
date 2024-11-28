@@ -14,10 +14,10 @@ tetris in zig
 - Multi player
 
 ```bash
-./tetris [your address] [player address...]
+./tetris [your listen address] [player address ...]
 ```
 
-> Multi player use UDP to sync boards and scores
+> Multi player uses UDP to sync boards and scores
 
 ## Play the game
 
