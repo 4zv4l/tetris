@@ -166,26 +166,25 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    // load clients
-    const clients = blk: {
-        var clients = std.ArrayList(Clients).init(allocator);
-        errdefer clients.deinit();
-        if (args.len < 2) break :blk clients.toOwnedSlice() catch @panic("Oops slice");
-        for (args[2..]) |straddr| {
-            try clients.append(.{ .board = std.mem.zeroes(Board), .address = try parseIp(straddr) });
-        }
-        break :blk clients.toOwnedSlice() catch @panic("Oops slice");
-    };
-    defer allocator.free(clients);
-
-    const addr = if (args.len > 1) try parseIp(args[1]) else std.net.Address.parseIp("0.0.0.0", 6666) catch unreachable;
-    var udp_server = try UDPServer.init(addr);
-    defer udp_server.deinit();
-
-    // loop getting boards from client
+    // setup server and thread if required
+    var udp_server: ?UDPServer = null;
+    var clients: ?[]Clients = null;
     var client_mutex = std.Thread.Mutex{};
-    var t = try std.Thread.spawn(.{}, UDPServer.getBoardFromClients, .{ udp_server, clients, &client_mutex });
-    t.detach();
+    switch (args.len) {
+        0, 1, 2 => {},
+        else => {
+            udp_server = try UDPServer.init(try parseIp(args[1]));
+            clients = try allocator.alloc(Clients, args.len - 2);
+            errdefer allocator.free(clients.?);
+            for (args[2..], clients.?) |strhost, *client| client.* = .{ .address = try parseIp(strhost), .board = std.mem.zeroes(Board) };
+            var t = try std.Thread.spawn(.{}, UDPServer.getBoardFromClients, .{ udp_server.?, clients.?, &client_mutex });
+            t.detach();
+        },
+    }
+    defer {
+        if (clients) |cs| allocator.free(cs);
+        if (udp_server) |server| server.deinit();
+    }
 
     // init IO
     try io.init();
@@ -196,16 +195,16 @@ pub fn main() !void {
     var gameOn = true;
     var current = Shape.newRandom();
     var before = std.time.nanoTimestamp();
-    try io.drawBoard(board, clients);
+    try io.drawBoard(board, clients orelse &.{});
 
     // main loop
     while (gameOn) {
         // check user input
         if (io.getch()) |direction| {
             try current.move(direction, &board, &gameOn);
-            try udp_server.sendBoardToClients(clients, board);
+            if (udp_server) |server| try server.sendBoardToClients(clients.?, board);
             client_mutex.lock();
-            try io.drawBoard(board, clients);
+            try io.drawBoard(board, clients orelse &.{});
             client_mutex.unlock();
         }
 
@@ -213,10 +212,10 @@ pub fn main() !void {
         const now = std.time.nanoTimestamp();
         if ((now - before) > (std.time.ns_per_s * 0.5)) {
             before = now;
-            try udp_server.sendBoardToClients(clients, board);
+            if (udp_server) |server| try server.sendBoardToClients(clients.?, board);
             try current.move(.Down, &board, &gameOn);
             client_mutex.lock();
-            try io.drawBoard(board, clients);
+            try io.drawBoard(board, clients orelse &.{});
             client_mutex.unlock();
         }
     }
