@@ -149,6 +149,7 @@ pub fn updateBoard(board: *Board, shape: Shape) void {
     }
 }
 
+// parse ip:port
 fn parseIp(host: []const u8) !std.net.Address {
     var host_it = std.mem.splitScalar(u8, host, ':');
     const ip = host_it.next() orelse @panic("wrong address given in arguments");
@@ -165,6 +166,7 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
+    // load clients
     const clients = blk: {
         var clients = std.ArrayList(Clients).init(allocator);
         errdefer clients.deinit();
@@ -180,6 +182,7 @@ pub fn main() !void {
     var udp_server = try UDPServer.init(addr);
     defer udp_server.deinit();
 
+    // loop getting boards from client
     var client_mutex = std.Thread.Mutex{};
     var t = try std.Thread.spawn(.{}, UDPServer.getBoardFromClients, .{ udp_server, clients, &client_mutex });
     t.detach();

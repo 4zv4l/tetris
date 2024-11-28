@@ -1,6 +1,7 @@
 const std = @import("std");
 const spoon = @import("spoon");
 
+const posix = std.posix;
 const root = @import("root");
 const Board = root.Board;
 const Direction = root.Direction;
@@ -23,6 +24,7 @@ pub const escape = struct {
 };
 
 var term: spoon.Term = undefined;
+var original_termios: posix.termios = undefined;
 
 pub fn init() !void {
     const stdout = std.io.getStdOut().writer();
@@ -31,9 +33,16 @@ pub fn init() !void {
     try bout.flush();
     try term.init(.{});
     try term.uncook(.{});
+
+    original_termios = try posix.tcgetattr(posix.STDIN_FILENO);
+    var raw = original_termios;
+    raw.lflag.ICANON = false;
+    try posix.tcsetattr(posix.STDIN_FILENO, posix.TCSA.FLUSH, raw);
 }
 
 pub fn deinit() !void {
+    original_termios.lflag.ICANON = true;
+    try posix.tcsetattr(posix.STDIN_FILENO, posix.TCSA.FLUSH, original_termios);
     const stdout = std.io.getStdOut().writer();
     var bout = std.io.bufferedWriter(stdout);
     try bout.writer().print("{s}{s}", .{ escape.CLEAR_TOP_LEFT, escape.EXIT_ALTER });

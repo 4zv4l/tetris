@@ -13,71 +13,36 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
     });
 
-    const gui = b.option(bool, "gui", "use gui instead of tui (raylib)") orelse false;
     switch (target.result.os.tag) {
         .windows => {
-            const io_path = if (gui) "src/io_raylib.zig" else "src/io_windows.zig";
+            const io_path = "src/io_windows.zig";
             const io = b.createModule(.{
                 .optimize = optimize,
                 .target = target,
                 .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = io_path } },
             });
-            if (gui) {
-                io.addIncludePath(.{ .src_path = .{
-                    .owner = b,
-                    .sub_path = "./lib/raylib-5.5_win64_mingw-w64/include/",
-                } });
-                exe.addLibraryPath(.{ .src_path = .{
-                    .owner = b,
-                    .sub_path = "./lib/raylib-5.5_win64_mingw-w64/lib/",
-                } });
-                exe.linkSystemLibrary("raylib");
-            }
             exe.root_module.addImport("io", io);
         },
         .macos => {
-            const io_path = if (gui) "src/io_raylib.zig" else "src/io_macos.zig";
+            const io_path = "src/io_posix.zig";
             const io = b.createModule(.{
                 .optimize = optimize,
                 .target = target,
                 .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = io_path } },
             });
-            if (gui) {
-                io.addIncludePath(.{ .src_path = .{
-                    .owner = b,
-                    .sub_path = "./lib/raylib-5.5_macos/include/",
-                } });
-                exe.addLibraryPath(.{ .src_path = .{
-                    .owner = b,
-                    .sub_path = "./lib/raylib-5.5_macos/lib/",
-                } });
-                exe.linkSystemLibrary("raylib");
-            } else {
-                exe.linkSystemLibrary("curses");
-            }
+            const spoon = b.dependency("zig-spoon", .{ .optimize = optimize, .target = target });
+            io.addImport("spoon", spoon.module("spoon"));
             exe.root_module.addImport("io", io);
         },
         else => {
-            const io_path = if (gui) "src/io_raylib.zig" else "src/io_unix.zig";
+            const io_path = "src/io_posix.zig";
             const io = b.createModule(.{
                 .optimize = optimize,
                 .target = target,
                 .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = io_path } },
             });
-            if (gui) {
-                io.addIncludePath(.{ .src_path = .{
-                    .owner = b,
-                    .sub_path = "./lib/raylib-5.5_linux_amd64/include/",
-                } });
-                exe.addLibraryPath(.{ .src_path = .{
-                    .owner = b,
-                    .sub_path = "./lib/raylib-5.5_linux_amd64/lib",
-                } });
-                exe.linkSystemLibrary("raylib");
-            } else {
-                const spoon = b.dependency("zig-spoon", .{ .optimize = optimize, .target = target });
-                io.addImport("spoon", spoon.module("spoon"));
-            }
+            const spoon = b.dependency("zig-spoon", .{ .optimize = optimize, .target = target });
+            io.addImport("spoon", spoon.module("spoon"));
             exe.root_module.addImport("io", io);
         },
     }
