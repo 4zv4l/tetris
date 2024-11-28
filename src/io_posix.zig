@@ -37,7 +37,11 @@ pub fn init() !void {
     original_termios = try posix.tcgetattr(posix.STDIN_FILENO);
     var raw = original_termios;
     raw.lflag.ICANON = false;
-    try posix.tcsetattr(posix.STDIN_FILENO, posix.TCSA.FLUSH, raw);
+    raw.lflag.ECHO = false;
+    raw.lflag.ISIG = false;
+    raw.cc[@intFromEnum(posix.V.MIN)] = 0;
+    raw.cc[@intFromEnum(posix.V.TIME)] = 0;
+    try posix.tcsetattr(posix.STDIN_FILENO, posix.TCSA.NOW, raw);
 }
 
 pub fn deinit() !void {
