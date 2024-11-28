@@ -6,6 +6,7 @@ pub const Clients = UDPServer.Clients;
 
 pub const cols = 10;
 pub const rows = 20;
+pub var lines_done: usize = 0;
 pub const Board = [rows][cols]u8;
 pub const Direction = enum { Up, Down, Left, Right };
 
@@ -116,6 +117,7 @@ pub fn checkLines(board: *Board) void {
             }
             @memset(&board[0], 0);
             line_idx = 0;
+            lines_done += 1;
         }
     }
 }
@@ -195,7 +197,6 @@ pub fn main() !void {
     var gameOn = true;
     var current = Shape.newRandom();
     var before = std.time.nanoTimestamp();
-    var speed_time = std.time.timestamp();
     var speed: f64 = 0.5;
     try io.drawBoard(board, clients orelse &.{});
 
@@ -213,10 +214,13 @@ pub fn main() !void {
         // check time to move shape down
         const now = std.time.nanoTimestamp();
         if ((now - before) > @as(i128, @intFromFloat(std.time.ns_per_s * speed))) {
-            if (speed > 0.130 and (std.time.timestamp() - speed_time) > 10) {
-                speed -= 0.025;
-                speed_time = std.time.timestamp();
-            }
+            speed = switch (lines_done) {
+                0...5 => 0.5,
+                6...10 => 0.4,
+                11...15 => 0.3,
+                16...20 => 0.2,
+                else => 0.1,
+            };
             before = now;
             if (udp_server) |server| try server.sendBoardToClients(clients.?, board);
             try current.move(.Down, &board, &gameOn);
