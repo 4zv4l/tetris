@@ -117,7 +117,7 @@ pub fn checkLines(board: *Board) void {
             }
             @memset(&board[0], 0);
             line_idx = 0;
-            lines_done += 1;
+            lines_done +|= 1;
         }
     }
 }
